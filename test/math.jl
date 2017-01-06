@@ -996,6 +996,13 @@ end
     end
 end
 
+@testset "issue #19872" begin
+    f19872(x) = x ^ 3
+    @test issubnormal(2.0 ^ (-1024))
+    @test f19872(2.0) === 8.0
+    @test !issubnormal(0.0)
+end
+
 @test Base.Math.f32(complex(1.0,1.0)) == complex(Float32(1.),Float32(1.))
 @test Base.Math.f16(complex(1.0,1.0)) == complex(Float16(1.),Float16(1.))
 
