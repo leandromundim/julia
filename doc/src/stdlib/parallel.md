@@ -74,6 +74,13 @@ Base.@fetchfrom
 Base.@async
 Base.@sync
 Base.@parallel
+Base.ParallelAccumulator
+Base.push!(::ParallelAccumulator, ::Any)
+Base.push!(::ParallelAccumulator)
+Base.wait(::ParallelAccumulator)
+Base.fetch(::ParallelAccumulator)
+Base.take!(::ParallelAccumulator)
+Base.count(::ParallelAccumulator)
 Base.@everywhere
 Base.clear!(::Any, ::Any; ::Any)
 Base.remoteref_id

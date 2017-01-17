@@ -13,9 +13,11 @@ end
 # Test a few "remote" invocations when no workers are present
 @test remote(myid)() == 1
 @test pmap(identity, 1:100) == [1:100...]
-@test 100 == @parallel (+) for i in 1:100
-        1
-    end
+acc = ParallelAccumulator(+, 0)
+@parallel for i in 1:100
+    push!(acc, 1)
+end
+@test take!(acc) == 100
 
 addprocs(4; exeflags=`$cov_flag $inline_flag --check-bounds=yes --startup-file=no --depwarn=error`)
 
@@ -470,8 +472,9 @@ for T in [Void, ShmemFoo]
 end
 
 # Issue #14664
-d = SharedArray{Int}(10)
-@sync @parallel for i=1:10
+# Also tests that @parallel blocks by default.
+d = SharedArray{Int}(100)
+@parallel for i=1:100
     d[i] = i
 end
 
@@ -482,7 +485,7 @@ end
 # complex
 sd = SharedArray{Int}(10)
 se = SharedArray{Int}(10)
-@sync @parallel for i=1:10
+@parallel for i=1:10
     sd[i] = i
     se[i] = i
 end
@@ -511,12 +514,16 @@ finalize(d)
 
 # Test @parallel load balancing - all processors should get either M or M+1
 # iterations out of the loop range for some M.
-ids = @parallel((a,b)->[a;b], for i=1:7; myid(); end)
+acc = ParallelAccumulator((a,b)->[a;b], [])
+@parallel(for i=1:7; push!(acc, myid()); end)
+ids = take!(acc)
 workloads = Int[sum(ids .== i) for i in 2:nprocs()]
 @test maximum(workloads) - minimum(workloads) <= 1
 
 # @parallel reduction should work even with very short ranges
-@test @parallel(+, for i=1:2; i; end) == 3
+acc = ParallelAccumulator(+, 0)
+@parallel(for i=1:2; push!(acc, i); end)
+@test take!(acc) == 3
 
 @test_throws ArgumentError sleep(-1)
 @test_throws ArgumentError timedwait(()->false, 0.1, pollint=-0.5)
@@ -998,10 +1005,12 @@ end
 
 # issue #8207
 let A = Any[]
-    @parallel (+) for i in (push!(A,1); 1:2)
-        i
+    acc = ParallelAccumulator(+, 0)
+    @parallel for i in (push!(A, 1); 1:2)
+        push!(acc, i)
     end
     @test length(A) == 1
+    @test take!(acc) == 3
 end
 
 # issue #13168
@@ -1116,16 +1125,19 @@ let
 end
 
 # issue #16451
-rng=RandomDevice()
-retval = @parallel (+) for _ in 1:10
-    rand(rng)
+rng = RandomDevice()
+acc = ParallelAccumulator(+, 0.0)
+@parallel for _ in 1:10
+    push!(acc, rand(rng))
 end
+retval = take!(acc)
 @test retval > 0.0 && retval < 10.0
 
 rand(rng)
-retval = @parallel (+) for _ in 1:10
-    rand(rng)
+@parallel for _ in 1:10
+    push!(acc, rand(rng))
 end
+retval = take!(acc)
 @test retval > 0.0 && retval < 10.0
 
 # serialization tests
@@ -1415,11 +1427,12 @@ s = convert(SharedArray, [1,2,3,4])
 #6760
 if true
     a = 2
-    x = @parallel (vcat) for k=1:2
-        sin(a)
+    acc = ParallelAccumulator(vcat, [])
+    @parallel for k=1:2
+        push!(acc, sin(a))
     end
 end
-@test x == map(_->sin(2), 1:2)
+@test take!(acc) == map(_->sin(2), 1:2)
 
 # Testing clear!
 function setup_syms(n, pids)
@@ -1479,3 +1492,87 @@ catch ex
     @test endswith(ex.captured.ex.exceptions[1].ex.msg, "BoundsError")
     @test ex.captured.ex.exceptions[2].ex == UndefVarError(:DontExistOn1)
 end
+
+# ParallelAccumulator and @parallel tests.
+# Simple cases of ParallelAccumulator and @parallel has been tested previously
+# and hence not repeated here.
+
+# ParallelAccumulator used independent of a @parallel
+acc = ParallelAccumulator(+, 0)
+for p in workers()
+    @spawnat p begin
+        for i in 1:10
+            push!(acc, 2)
+        end
+        push!(acc)
+    end
+end
+wait(acc)
+@test count(acc) == nworkers()*10
+@test take!(acc) == 2*nworkers()*10
+
+# take! should have reset the accumulator
+@test acc.cnt == 0
+@test isempty(acc.workers)
+
+# reuse the accumulator
+@parallel for i in 1:10
+  push!(acc, i)
+end
+
+# fetch must not reset the accumulator
+@test fetch(acc) == 55
+@test fetch(acc) == 55
+@test take!(acc) == 55
+
+# Multiple accumulators in a @parallel call, mix of local and global accumulators.
+global gacc1 = ParallelAccumulator(+, 0)
+global gacc2 = ParallelAccumulator(*, 1)
+global gval = 1
+function foo()
+    local lval = 2
+    local l1 = ParallelAccumulator(string, "");
+    local l2 = ParallelAccumulator((a,b)->[a;b], []);  # accumulator with an anonymous reducer
+    @parallel for i in 11:20
+        j = i - 10
+        push!(gacc1, lval*j)
+        push!(gacc2, gval*j)
+        push!(l1, j)
+        push!(l2, myid())
+    end
+
+    @test take!(gacc1) == 110
+    @test take!(gacc2) == 3628800
+    v = take!(l1)
+    @test length(v) == 11
+    @test all(x -> x>=0 && x <= 9, [parse(Int, string(x)) for x in v])
+    wlist = workers()
+    @test all(x -> x in wlist, take!(l2))
+end
+
+foo()
+
+# Parallel accumulator with a regular for loop
+acc = ParallelAccumulator(+, 0)
+for i in 1:10
+    push!(acc, i)
+end
+@test take!(acc) == 55
+
+# With an initial value and without, simulate an empty loop
+@test take!(ParallelAccumulator(+, 0)) == 0
+@test take!(ParallelAccumulator(+, 0)) == 0
+
+# concurrent use of an accumulator should trigger assertion checks
+function pacc_error_test()
+    acc = ParallelAccumulator(+, 0)
+    @parallel for i in 1:nworkers()
+        sleep(1)
+        push!(acc, i)
+    end
+    @parallel for i in 1:nworkers()
+        sleep(1)
+        push!(acc, i)
+    end
+end
+@test_throws AssertionError pacc_error_test()
