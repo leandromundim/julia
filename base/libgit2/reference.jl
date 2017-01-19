@@ -27,7 +27,7 @@ to this branch will have no parents.
 function isorphan(repo::GitRepo)
     r = @check ccall((:git_repository_head_unborn, :libgit2), Cint,
                      (Ptr{Void},), repo.ptr)
-    r != 0
+    return r != 0
 end
 
 function head(repo::GitRepo)
@@ -44,9 +44,7 @@ function shortname(ref::GitReference)
     return unsafe_string(name_ptr)
 end
 
-function reftype(ref::GitReference)
-    return ccall((:git_reference_type, :libgit2), Cint, (Ptr{Void},), ref.ptr)
-end
+reftype(ref::GitReference) = ccall((:git_reference_type, :libgit2), Cint, (Ptr{Void},), ref.ptr)
 
 function fullname(ref::GitReference)
     isempty(ref) && return ""
@@ -138,7 +136,7 @@ function ref_list(repo::GitRepo)
                       (Ptr{StrArrayStruct}, Ptr{Void}), sa_ref, repo.ptr)
     res = convert(Vector{String}, sa_ref[])
     free(sa_ref)
-    res
+    return res
 end
 
 function create_branch(repo::GitRepo,
@@ -263,7 +261,7 @@ Base.iteratorsize(::Type{GitBranchIter}) = Base.SizeUnknown()
 
 function Base.map(f::Function, bi::GitBranchIter)
     res = nothing
-    s = start(bi)
+    s   = start(bi)
     while !done(bi, s)
         val = f(s[1:2])
         if res === nothing
