@@ -1420,9 +1420,3 @@ The following examples may help you interpret expressions marked as containing n
         field `data::Array{T}`. But `Array` needs the dimension `N`, too, to be a concrete type.
       * Suggestion: use concrete types like `Array{T,3}` or `Array{T,N}`, where `N` is now a parameter
         of `ArrayContainer`
-
-```@meta
-DocTestSetup = quote
-    srand(1234)
-end
-```
