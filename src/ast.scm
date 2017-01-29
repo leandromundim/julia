@@ -77,7 +77,10 @@
                 ((generator)
                  (string "(" (deparse (cadr e)) " for " (deparse-arglist (cddr e) ", ") ")"))
                 ((where)
-                 (string (deparse (cadr e)) " where " (deparse (caddr e))))
+                 (string (deparse (cadr e)) " where "
+                         (if (length= e 3)
+                             (deparse (caddr e))
+                             (deparse (cons 'tuple (cddr e))))))
                 (else
                  (string e))))))
 
