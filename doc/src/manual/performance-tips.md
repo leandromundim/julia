@@ -83,7 +83,7 @@ and follow the advice below.
 
 For more serious benchmarking, consider the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) package which evaluates the function multiple times in order to reduce noise.
 
-As a teaser, note that an improved version of this function allocates no memory (except to pass
+As a teaser, an improved version of this function allocates no memory (except to pass
 back the result back to the REPL) and has an order of magnitude faster execution after the first
 call:
 
