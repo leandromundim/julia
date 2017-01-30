@@ -41,6 +41,9 @@ Language changes
   * `isa` is now parsed as an infix operator with the same precedence as `in`
     ([#19677]).
 
+  * The identifier `_` can be assigned, but accessing its value is deprecated,
+    allowing this syntax to be used in the future for discarding values ([#9343], [#18251]).
+
 Breaking changes
 ----------------
 
