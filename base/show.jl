@@ -1054,11 +1054,11 @@ function show_lambda_types(io::IO, li::Core.MethodInstance)
             return
         end
         sig = li.specTypes.parameters
-        ft = sig[1]
-        if ft <: Function && isempty(ft.parameters) &&
-                isdefined(ft.name.module, ft.name.mt.name) &&
-                ft == typeof(getfield(ft.name.module, ft.name.mt.name))
-            print(io, ft.name.mt.name)
+        ft = sig[1]; uw = unwrap_unionall(ft)
+        if ft <: Function && isa(uw,DataType) && isempty(uw.parameters) &&
+                isdefined(uw.name.module, uw.name.mt.name) &&
+                ft == typeof(getfield(uw.name.module, uw.name.mt.name))
+            print(io, uw.name.mt.name)
         elseif isa(ft, DataType) && ft.name === Type.body.name && isleaftype(ft)
             f = ft.parameters[1]
             print(io, f)
