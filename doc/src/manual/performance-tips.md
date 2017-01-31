@@ -62,11 +62,11 @@ julia> function f(n)
 f (generic function with 1 method)
 
 julia> @time f(1)
-elapsed time: 0.004710563 seconds (93504 bytes allocated)
+  0.012686 seconds (2.09 k allocations: 103.421 KiB)
 0.5
 
 julia> @time f(10^6)
-elapsed time: 0.04123202 seconds (32002136 bytes allocated)
+  0.224887 seconds (3.00 M allocations: 45.777 MiB, 90.52% gc time)
 2.5000025e11
 ```
 
@@ -81,19 +81,20 @@ problem with type-stability. Consequently, in addition to the allocation itself,
 that the code generated for your function is far from optimal. Take such indications seriously
 and follow the advice below.
 
-For more serious benchmarking, consider the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) package which evaluates the function multiple times in order to reduce noise.
+For more serious benchmarking, consider the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl)
+package which evaluates the function multiple times in order to reduce noise.
 
-As a teaser, an improved version of this function allocates no memory (except to pass
-back the result back to the REPL) and has an order of magnitude faster execution after the first
-call:
+As a teaser, an improved version of this function allocates no memory
+(the allocation reported below is due to running the `@time` macro in global scope)
+and has two orders of magnitude faster execution after the first call:
 
 ```julia
-julia> @time f_improved(1)   # first call
-elapsed time: 0.003702172 seconds (78944 bytes allocated)
+julia> @time f_improved(1)
+  0.007008 seconds (1.32 k allocations: 63.640 KiB)
 0.5
 
 julia> @time f_improved(10^6)
-elapsed time: 0.004313644 seconds (112 bytes allocated)
+  0.002997 seconds (6 allocations: 192 bytes)
 2.5000025e11
 ```
 
@@ -204,7 +205,7 @@ This is a better choice than
 
 ```jldoctest myambig2
 julia> type MyStillAmbiguousType
-         a::AbstractFloat
+           a::AbstractFloat
        end
 ```
 
@@ -296,11 +297,11 @@ The same best practices also work for container types:
 
 ```jldoctest containers
 julia> type MySimpleContainer{A<:AbstractVector}
-         a::A
+           a::A
        end
 
 julia> type MyAmbiguousContainer{T}
-         a::AbstractVector{T}
+           a::AbstractVector{T}
        end
 ```
 
