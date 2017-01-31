@@ -66,7 +66,7 @@ julia> @time f(1)
 0.5
 
 julia> @time f(10^6)
-  0.224887 seconds (3.00 M allocations: 45.777 MiB, 90.52% gc time)
+  0.021061 seconds (3.00 M allocations: 45.777 MiB, 11.69% gc time)
 2.5000025e11
 ```
 
@@ -86,7 +86,7 @@ package which evaluates the function multiple times in order to reduce noise.
 
 As a teaser, an improved version of this function allocates no memory
 (the allocation reported below is due to running the `@time` macro in global scope)
-and has two orders of magnitude faster execution after the first call:
+and has an order of magnitude faster execution after the first call:
 
 ```julia
 julia> @time f_improved(1)
