@@ -197,7 +197,7 @@ be any one of several types, in which case the natural solution is to use parame
 
 ```jldoctest myambig2
 julia> type MyType{T<:AbstractFloat}
-         a::T
+           a::T
        end
 ```
 
